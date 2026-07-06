@@ -8,8 +8,6 @@ jobs:
     name: Build Custom Client Exe
     runs-on: windows-2022
     
-    # GLOBAL ENVIRONMENT BINDINGS:
-    # This guarantees that every step, Python script, and compiler call can see these paths
     env:
       VCPKG_ROOT: C:\vcpkg
       LIBCLANG_PATH: C:\Program Files\LLVM\bin
@@ -40,7 +38,6 @@ jobs:
 
       - name: Compile Static vcpkg Dependencies
         run: |
-          # Exposes libraries globally so cargo links them cleanly
           vcpkg install libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static --classic
         shell: powershell
 
@@ -83,7 +80,8 @@ jobs:
 
       - name: Bootstrap Rust Bridge Codegen
         run: |
-          cargo install flutter_rust_bridge_codegen --version 1.80.1 --features uuid
+          # CHANGED: Downgraded to 1.75.3 to produce the exact trait definitions expected by EventToUI
+          cargo install flutter_rust_bridge_codegen --version 1.75.3 --features uuid
           cd flutter
           flutter pub get
         shell: powershell
