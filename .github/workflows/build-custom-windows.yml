@@ -1,7 +1,7 @@
 name: Build Custom Windows Client
 
 on:
-  workflow_dispatch: # Manual run button trigger
+  workflow_dispatch:
 
 jobs:
   build:
@@ -10,7 +10,13 @@ jobs:
 
     steps:
       - name: Checkout Source Code
-        uses: actions/checkout@v6 # Upgraded from v4 to v6 for full Node 24 support
+        uses: actions/checkout@v6
+
+      - name: Install LLVM & System Tools
+        run: |
+          choco install llvm wget unzip -y
+          echo "C:\Program Files\LLVM\bin" >> $GITHUB_PATH
+        shell: powershell
 
       - name: Setup Flutter Toolchain
         uses: subosito/flutter-action@v2
@@ -21,6 +27,12 @@ jobs:
       - name: Setup Rust Compiler
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Bootstrap Rust Bridge Codegen
+        run: |
+          cargo install flutter_rust_bridge_codegen --version 1.75.3 --features uuid
+          flutter pub get
+        shell: powershell
+
       - name: Build RustDesk Windows Client
         env:
           RENDEZVOUS_SERVER: ${{ vars.RENDEZVOUS_SERVER }}
@@ -30,7 +42,7 @@ jobs:
           python build.py --flutter
 
       - name: Upload Finished Executable
-        uses: actions/upload-artifact@v4 # Uses latest standard execution block
+        uses: actions/upload-artifact@v4
         with:
           name: BetterDesk-Windows-Client
-          path: target/release/rustdesk.exe
+          path: flutter/build/windows/x64/runner/Release/
