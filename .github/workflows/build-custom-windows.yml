@@ -7,6 +7,12 @@ jobs:
   build:
     name: Build Custom Client Exe
     runs-on: windows-2022
+    
+    # GLOBAL ENVIRONMENT BINDINGS:
+    # This guarantees that every step, Python script, and compiler call can see these paths
+    env:
+      VCPKG_ROOT: C:\vcpkg
+      LIBCLANG_PATH: C:\Program Files\LLVM\bin
 
     steps:
       - name: Checkout Source Code
@@ -23,19 +29,18 @@ jobs:
       - name: Force Modern Rust Binary Priority
         run: |
           echo "$USERPROFILE\.cargo\bin" >> $GITHUB_PATH
-          echo "VCPKG_ROOT=C:\vcpkg" >> $GITHUB_ENV
           echo "C:\vcpkg" >> $GITHUB_PATH
+          echo "C:\Program Files\LLVM\bin" >> $GITHUB_PATH
         shell: powershell
 
       - name: Install LLVM & System Tools
         run: |
           choco install llvm wget unzip -y
-          echo "C:\Program Files\LLVM\bin" >> $GITHUB_PATH
-          echo "LIBCLANG_PATH=C:\Program Files\LLVM\bin" >> $GITHUB_ENV
         shell: powershell
 
       - name: Compile Static vcpkg Dependencies
         run: |
+          # Exposes libraries globally so cargo links them cleanly
           vcpkg install libvpx:x64-windows-static libyuv:x64-windows-static opus:x64-windows-static aom:x64-windows-static --classic
         shell: powershell
 
@@ -59,7 +64,7 @@ jobs:
               if 'default-run = "rustdesk"' in line or 'default-run = "RustDesk"' in line:
                   continue
               
-              # AGGRESSIVE HOTFIX: Catch any variations of tray-icon pointing to github and force crates.io stable version
+              # AGGRESSIVE HOTFIX: Catch variations of tray-icon pointing to git and force crates.io version
               if "tray-icon" in line and "git" in line:
                   line = 'tray-icon = "0.21.3"\n'
                   
