@@ -52,30 +52,7 @@ jobs:
           (Get-Content Cargo.toml) -replace 'default-run = "RustDesk"', '' | Set-Content Cargo.toml
         shell: powershell
 
-      - name: Synchronize Lockfile To Custom Manifest
+      - name: Hotfix Tray Icon Upstream Dependency Mismatch
         run: |
-          # CRITICAL: This updates the local Cargo.lock metadata file dynamically. 
-          # When build.py passes "--locked", Cargo checks it, matches it safely, and skips the error.
-          cargo update
-        shell: powershell
-
-      - name: Bootstrap Rust Bridge Codegen
-        run: |
-          cargo install flutter_rust_bridge_codegen --version 1.80.1 --features uuid
-          cd flutter
-          flutter pub get
-        shell: powershell
-
-      - name: Build RustDesk Windows Client
-        env:
-          RENDEZVOUS_SERVER: ${{ vars.RENDEZVOUS_SERVER }}
-          API_SERVER: ${{ vars.API_SERVER }}
-          RS_PUB_KEY: ${{ vars.RS_PUB_KEY }}
-        run: |
-          python build.py --flutter
-
-      - name: Upload Finished Executable
-        uses: actions/upload-artifact@v4
-        with:
-          name: BetterDesk-Windows-Client
-          path: flutter/build/windows/x64/runner/Release/
+          # CRITICAL: This replaces the broken Git branch pointer with a solid version requirement from crates.io
+          (Get-Content Cargo.toml) -replace 'tray-icon = \{ git = "
