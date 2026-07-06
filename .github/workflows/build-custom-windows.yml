@@ -40,13 +40,13 @@ jobs:
       - name: Setup Rust Compiler
         uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: 1.78.0
+          toolchain: stable # Upgraded to absolute latest stable to ensure native 2026 edition handling
           target: x86_64-pc-windows-msvc
 
-      - name: Hotfix Cargo Manifest Syntax Error
+      - name: Force Modern Rust Binary Path
         run: |
-          # Automatically removes or updates the unreadable syntax parameter if a fallback toolchain triggers
-          (Get-Content Cargo.toml) -replace 'rust-version = "1.00"', 'rust-version = "1.75"' | Set-Content Cargo.toml
+          # CRITICAL: This intercepts the system path and forces python build.py to look at our modern Cargo installation first
+          echo "$USERPROFILE\.cargo\bin" >> $GITHUB_PATH
         shell: powershell
 
       - name: Bootstrap Rust Bridge Codegen
