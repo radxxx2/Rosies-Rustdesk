@@ -7,7 +7,7 @@ jobs:
   build:
     name: Build Custom Client Exe
     runs-on: windows-2022
-    
+
     env:
       VCPKG_ROOT: C:\vcpkg
       LIBCLANG_PATH: C:\Program Files\LLVM\bin
@@ -60,11 +60,11 @@ jobs:
               # Remove custom workspace constraints for renamed forks
               if 'default-run = "rustdesk"' in line or 'default-run = "RustDesk"' in line:
                   continue
-              
+
               # AGGRESSIVE HOTFIX: Catch variations of tray-icon pointing to git and force crates.io version
               if "tray-icon" in line and "git" in line:
                   line = 'tray-icon = "0.21.3"\n'
-                  
+
               new_lines.append(line)
 
           # Save corrected file
@@ -80,10 +80,16 @@ jobs:
 
       - name: Bootstrap Rust Bridge Codegen
         run: |
-          # CHANGED: Downgraded to 1.75.3 to produce the exact trait definitions expected by EventToUI
-          cargo install flutter_rust_bridge_codegen --version 1.75.3 --features uuid
+          # FIXED: Updated version to 1.80.1 to perfectly match the Cargo.lock environment
+          cargo install flutter_rust_bridge_codegen --version 1.80.1 --features uuid
+          
+          # Fetch Flutter dependencies first so codegen knows the structure
           cd flutter
           flutter pub get
+          cd ..
+          
+          # Force execute the codegen compilation step manually to ensure files exist before build.py
+          flutter_rust_bridge_codegen --rust-input src/flutter_ffi.rs --dart-output flutter/lib/bridge_generated.dart
         shell: powershell
 
       - name: Build RustDesk Windows Client
