@@ -87,16 +87,32 @@ jobs:
           # 2. Install the code generator
           cargo install flutter_rust_bridge_codegen --version 1.80.1 --features uuid
           
+          # 3. Patch pubspec.yaml using Python to handle existing overrides correctly
+          python -c "
+          with open('flutter/pubspec.yaml', 'r', encoding='utf-8') as f:
+              lines = f.readlines()
+          
+          out = []
+          overrides_found = False
+          for line in lines:
+              out.append(line)
+              if line.strip().startswith('dependency_overrides:'):
+                  out.append('  extended_text: 13.0.0\n')
+                  overrides_found = True
+          
+          if not overrides_found:
+              out.append('\ndependency_overrides:\n  extended_text: 13.0.0\n')
+              
+          with open('flutter/pubspec.yaml', 'w', encoding='utf-8') as f:
+              f.writelines(out)
+          print('pubspec.yaml successfully injected with extended_text override!')
+          "
+          
           cd flutter
-          
-          # 3. Inject dependency_overrides into pubspec.yaml to downgrade extended_text
-          Add-Content pubspec.yaml "`ndependency_overrides:`n  extended_text: 13.0.0"
-          
           flutter pub get
           cd ..
           
-          # 4. Force execution with explicit LLVM tracking environment variable
-          # This prevents the empty-stderr ffigen crash
+          # 4. Force execution of codegen compilation
           flutter_rust_bridge_codegen --rust-input src/flutter_ffi.rs --dart-output flutter/lib/generated_bridge.dart
         shell: powershell
 
