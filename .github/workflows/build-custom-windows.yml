@@ -80,17 +80,23 @@ jobs:
 
       - name: Bootstrap Rust Bridge Codegen
         run: |
+          # 1. Update the process env so this specific task block definitely sees LLVM
+          $env:LIBCLANG_PATH = "C:\Program Files\LLVM\bin"
+          $env:PATH = "C:\Program Files\LLVM\bin;" + $env:PATH
+          
+          # 2. Install the code generator
           cargo install flutter_rust_bridge_codegen --version 1.80.1 --features uuid
           
           cd flutter
           
-          # HOTFIX: Inject dependency_overrides into pubspec.yaml to downgrade extended_text
-          # This forces a version compatible with our Flutter 3.19 environment
+          # 3. Inject dependency_overrides into pubspec.yaml to downgrade extended_text
           Add-Content pubspec.yaml "`ndependency_overrides:`n  extended_text: 13.0.0"
           
           flutter pub get
           cd ..
           
+          # 4. Force execution with explicit LLVM tracking environment variable
+          # This prevents the empty-stderr ffigen crash
           flutter_rust_bridge_codegen --rust-input src/flutter_ffi.rs --dart-output flutter/lib/generated_bridge.dart
         shell: powershell
 
