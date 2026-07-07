@@ -44,7 +44,8 @@ jobs:
       - name: Setup Flutter Toolchain
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.x'
+          # UPDATED: Bumped to 3.22.x to support newer Material 3 properties like surfaceContainerHighest
+          flutter-version: '3.22.x'
           cache: true
 
       - name: Patch Cargo Manifest via Python
