@@ -11,6 +11,10 @@ jobs:
     env:
       VCPKG_ROOT: C:\vcpkg
       LIBCLANG_PATH: C:\Program Files\LLVM\bin
+      # NATIVE MACROS: This forces the Rust compiler to bake them directly into the codebase
+      RENDEZVOUS_SERVER: "23.94.112.131:21116"
+      API_SERVER: "http://23.94.112.131:21121"
+      RS_PUB_KEY: "YqvrjbVRZ0uU6gQanlTEw6EM+KObuIfUuNa/5aXRCPs="
 
     steps:
       - name: Checkout Source Code
@@ -44,7 +48,6 @@ jobs:
       - name: Setup Flutter Toolchain
         uses: subosito/flutter-action@v2
         with:
-          # Bumps to 3.22.x to support newer Material 3 properties like surfaceContainerHighest
           flutter-version: '3.22.x'
           cache: true
 
@@ -58,17 +61,14 @@ jobs:
 
           new_lines = []
           for line in lines:
-              # Remove custom workspace constraints for renamed forks
               if 'default-run = "rustdesk"' in line or 'default-run = "RustDesk"' in line:
                   continue
 
-              # AGGRESSIVE HOTFIX: Catch variations of tray-icon pointing to git and force crates.io version
               if "tray-icon" in line and "git" in line:
                   line = 'tray-icon = "0.21.3"\n'
 
               new_lines.append(line)
 
-          # Save corrected file
           with open("Cargo.toml", "w", encoding="utf-8") as f:
               f.writelines(new_lines)
           print("Cargo.toml successfully patched line-by-line!")
@@ -81,14 +81,11 @@ jobs:
 
       - name: Bootstrap Rust Bridge Codegen
         run: |
-          # 1. Update the process env so this specific task block definitely sees LLVM
           $env:LIBCLANG_PATH = "C:\Program Files\LLVM\bin"
           $env:PATH = "C:\Program Files\LLVM\bin;" + $env:PATH
           
-          # 2. Install the code generator
           cargo install flutter_rust_bridge_codegen --version 1.80.1 --features uuid
           
-          # 3. Patch pubspec.yaml using Python to handle existing overrides correctly
           python -c "
           with open('flutter/pubspec.yaml', 'r', encoding='utf-8') as f:
               lines = f.readlines()
@@ -113,55 +110,28 @@ jobs:
           flutter pub get
           cd ..
           
-          # 4. Force execution of codegen compilation
           flutter_rust_bridge_codegen --rust-input src/flutter_ffi.rs --dart-output flutter/lib/generated_bridge.dart
         shell: powershell
 
-      - name: Inject Server Configurations & Branding
-        run: |
-          import os
-
-          # 1. Hardcode Server Configuration Fallbacks
-          config_files = ['src/config.rs', 'libs/hbb_common/src/config.rs']
-          for path in config_files:
-              if not os.path.exists(path):
-                  continue
-              with open(path, 'r', encoding='utf-8') as f:
-                  content = f.read()
-              
-              content = content.replace('rendezvous_server = ""', 'rendezvous_server = "23.94.112.131:21116"')
-              content = content.replace('api_server = ""', 'api_server = "http://23.94.112.131:21121"')
-              content = content.replace('key = ""', 'key = "YqvrjbVRZ0uU6gQanlTEw6EM+KObuIfUuNa/5aXRCPs="')
-              
-              with open(path, 'w', encoding='utf-8') as f:
-                  f.write(content)
-
-          # 2. Whitelabel Global Strings (Changes title bars, service names, and registry entries)
-          files_to_rename = ['src/config.rs', 'libs/hbb_common/src/config.rs', 'src/main.rs']
-          for path in files_to_rename:
-              if not os.path.exists(path):
-                  continue
-              with open(path, 'r', encoding='utf-8') as f:
-                  content = f.read()
-              
-              # Replaces system variable references to application name
-              content = content.replace('"RustDesk"', '"RonsRustDesk"')
-              content = content.replace('"rustdesk"', '"ronsrustdesk"')
-              
-              with open(path, 'w', encoding='utf-8') as f:
-                  f.write(content)
-                  
-          print('Successfully forced hardcoded configs and RonsRustDesk branding!')
-        shell: python
-
       - name: Build RustDesk Windows Client
         run: |
+          # Injecting values into global execution block
+          $env:RENDEZVOUS_SERVER = "23.94.112.131:21116"
+          $env:API_SERVER = "http://23.94.112.131:21121"
+          $env:RS_PUB_KEY = "YqvrjbVRZ0uU6gQanlTEw6EM+KObuIfUuNa/5aXRCPs="
           $env:RUSTFLAGS="-A warnings"
           python build.py --flutter
         shell: powershell
 
-      - name: Upload Finished Executable
+      - name: Packaging Native Installer File
+        run: |
+          # Duplicates the compiled output and forces the installer suffix trigger
+          cd flutter/build/windows/x64/runner/Release/
+          cp rustdesk.exe rustdesk-install.exe
+        shell: powershell
+
+      - name: Upload Finished Executable & Installer
         uses: actions/upload-artifact@v4
         with:
-          name: RonsRustDesk-Windows-Client
+          name: RustDesk-Windows-Client-Package
           path: flutter/build/windows/x64/runner/Release/
